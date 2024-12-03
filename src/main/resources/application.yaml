@@ -1,3 +1,11 @@
 spring:
   application:
     name: demo-app
+
+chat:
+  system:
+    message: |
+      Render your response with HTML, use <p> tag to separate sentences.
+      Use <b>, <i> and <u> to emphasize words.
+      Try to imitate a German accent throughout the response.
+      Limit your response to 5 sentences.

@@ -5,7 +5,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 
-import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.GPT_35_TURBO;
 import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.GPT_4O;
 import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.Parameter.TEMPERATURE;
 
@@ -24,6 +23,6 @@ public class DemoApplication {
   @Bean
   OrchestrationModuleConfig getOrchestrationConfig() {
     var config = new OrchestrationModuleConfig();
-    return config.withLlmConfig(GPT_4O);
+    return config.withLlmConfig(GPT_4O.withParam(TEMPERATURE, 0.5));
   }
 }

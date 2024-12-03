@@ -5,6 +5,7 @@ import com.sap.ai.sdk.orchestration.OrchestrationClient;
 import com.sap.ai.sdk.orchestration.OrchestrationModuleConfig;
 import com.sap.ai.sdk.orchestration.OrchestrationPrompt;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,12 +23,13 @@ public class ChatController {
   @Autowired
   OrchestrationModuleConfig config;
 
+  @Value("${chat.system.message}")
+  String systemMessage;
+
   @GetMapping(value = "/step1", produces = "text/html")
   @Nonnull
   String completion(@RequestParam("text") String text) {
-    var prompt = new OrchestrationPrompt(
-        Message.system("Render your response with HTML, use <p> tag to separate sentences. Use <b>, <i> and <u> to emphasize words. Try to imitate a German accent throughout the response. Limit your response to 5 sentences."),
-        Message.user(text));
+    var prompt = new OrchestrationPrompt(Message.system(systemMessage), Message.user(text));
     var result = client.chatCompletion(prompt, config);
     return result.getContent();
   }
