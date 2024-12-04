@@ -12,14 +12,11 @@ import com.sap.ai.sdk.orchestration.model.LLMModuleResultSynchronous;
 import com.sap.ai.sdk.orchestration.model.ModuleConfigs;
 import com.sap.ai.sdk.orchestration.model.OrchestrationConfig;
 import com.sap.ai.sdk.orchestration.model.Template;
-import com.sap.ai.sdk.orchestration.model.TemplatingModuleConfig;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.StringEntity;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,15 +27,12 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.Map;
 
+import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.GPT_4O;
+import static com.sap.ai.sdk.orchestration.OrchestrationAiModel.Parameter.TEMPERATURE;
+
 @RestController
 @RequestMapping("/chat")
 public class ChatController {
-
-  @Autowired
-  OrchestrationClient client; // used later
-
-  @Autowired
-  OrchestrationModuleConfig config; // used later
 
   @Value("${chat.system.message}")
   String systemMessage;
@@ -100,6 +94,7 @@ public class ChatController {
   @GetMapping(value = "/step2", produces = "text/html")
   @Nonnull
   String completionLowLevel(@RequestParam("text") String text) {
+    var client = new OrchestrationClient();
     var llmModuleConfig = LLMModuleConfig.create().modelName("gpt-4o").modelParams(Map.of("temperature", 0.5)).modelVersion("latest");
     var system = ChatMessage.create().role("system").content(systemMessage);
     var user = ChatMessage.create().role("user").content(text);
@@ -113,6 +108,8 @@ public class ChatController {
   @GetMapping(value = "/step3", produces = "text/html")
   @Nonnull
   String completionHighLevel(@RequestParam("text") String text) {
+    var client = new OrchestrationClient();
+    var config = new OrchestrationModuleConfig().withLlmConfig(GPT_4O.withParam(TEMPERATURE, 0.5));
     var prompt = new OrchestrationPrompt(Message.system(systemMessage), Message.user(text));
     var result = client.chatCompletion(prompt, config);
     return result.getContent();
