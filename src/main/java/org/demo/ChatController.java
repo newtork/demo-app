@@ -5,6 +5,14 @@ import com.sap.ai.sdk.orchestration.Message;
 import com.sap.ai.sdk.orchestration.OrchestrationClient;
 import com.sap.ai.sdk.orchestration.OrchestrationModuleConfig;
 import com.sap.ai.sdk.orchestration.OrchestrationPrompt;
+import com.sap.ai.sdk.orchestration.model.ChatMessage;
+import com.sap.ai.sdk.orchestration.model.CompletionPostRequest;
+import com.sap.ai.sdk.orchestration.model.LLMModuleConfig;
+import com.sap.ai.sdk.orchestration.model.LLMModuleResultSynchronous;
+import com.sap.ai.sdk.orchestration.model.ModuleConfigs;
+import com.sap.ai.sdk.orchestration.model.OrchestrationConfig;
+import com.sap.ai.sdk.orchestration.model.Template;
+import com.sap.ai.sdk.orchestration.model.TemplatingModuleConfig;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
@@ -20,16 +28,17 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/chat")
 public class ChatController {
 
   @Autowired
-  OrchestrationClient client;
+  OrchestrationClient client; // used later
 
   @Autowired
-  OrchestrationModuleConfig config;
+  OrchestrationModuleConfig config; // used later
 
   @Value("${chat.system.message}")
   String systemMessage;
@@ -37,10 +46,10 @@ public class ChatController {
   @GetMapping(value = "/step1", produces = "text/html")
   @Nonnull
   String completionVanilla(@RequestParam("text") String text) throws IOException {
-    String HOST =  null;
-    String DEPLOYMENT = null;
-    String RESOURCE_GROUP = null;
-    String AUTH_TOKEN = null;
+    String HOST = null; // SECRET
+    String DEPLOYMENT = null; // SECRET
+    String RESOURCE_GROUP = null; // SECRET
+    String AUTH_TOKEN = null; // SECRET
 
     // Create HttpClient
     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
@@ -63,8 +72,8 @@ public class ChatController {
                 },
                 "templating_module_config":{
                   "template":[
-                    {"role":"system","content":"Render your response with HTML, use <p> tag to separate sentences.\\nUse <b>, <i> and <u> to emphasize words.\\nTry to imitate a German accent throughout the response.\\nLimit your response to 5 sentences."},
-                    {"role":"user","content":"What's the difference between Java and JavaScript?"}
+                    {"role":"system","content":"%s"},
+                    {"role":"user","content":"%s"}
                   ]
                 }
               },
@@ -73,7 +82,7 @@ public class ChatController {
             "input_params":{},
             "messages_history":[]
           }
-          """;
+          """.formatted(systemMessage.replace("\n"," "), text);
       StringEntity entity = new StringEntity(jsonPayload, ContentType.APPLICATION_JSON);
       httpPost.setEntity(entity);
 
@@ -91,9 +100,14 @@ public class ChatController {
   @GetMapping(value = "/step2", produces = "text/html")
   @Nonnull
   String completionLowLevel(@RequestParam("text") String text) {
-    var prompt = new OrchestrationPrompt(Message.system(systemMessage), Message.user(text));
-    var result = client.chatCompletion(prompt, config);
-    return result.getContent();
+    var llmModuleConfig = LLMModuleConfig.create().modelName("gpt-4o").modelParams(Map.of("temperature", 0.5)).modelVersion("latest");
+    var system = ChatMessage.create().role("system").content(systemMessage);
+    var user = ChatMessage.create().role("user").content(text);
+    var moduleConfig = ModuleConfigs.create().llmModuleConfig(llmModuleConfig).templatingModuleConfig(Template.create().template(system, user));
+    var postRequest = CompletionPostRequest.create().orchestrationConfig(OrchestrationConfig.create().moduleConfigurations(moduleConfig));
+
+    var result = client.executeRequest(postRequest);
+    return ((LLMModuleResultSynchronous) result.getOrchestrationResult()).getChoices().getFirst().getMessage().getContent();
   }
 
   @GetMapping(value = "/step3", produces = "text/html")
